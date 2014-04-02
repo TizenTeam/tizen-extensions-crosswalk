@@ -113,7 +113,7 @@ GYP_OPTIONS="$GYP_OPTIONS -Ddisplay_type=x11"
 
 ./tools/gyp/gyp $GYP_OPTIONS tizen-wrt.gyp
 
-make %{?_smp_mflags}
+make V=1 %{?_smp_mflags}
 
 %install
 

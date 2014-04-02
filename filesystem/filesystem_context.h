@@ -20,8 +20,11 @@
 #include "tizen/tizen.h"
 
 class FilesystemContext {
+ friend	class DownloadContext;
  public:
   explicit FilesystemContext(ContextAPI* api);
+  FilesystemContext();
+
   ~FilesystemContext();
 
   /* ExtensionAdapter implementation */

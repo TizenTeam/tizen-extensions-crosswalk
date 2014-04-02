@@ -14,6 +14,7 @@
 #include "common/extension_adapter.h"
 #include "common/utils.h"
 #include "web/download.h"
+#include "filesystem/filesystem_context.h"
 
 namespace picojson {
 class value;
@@ -30,7 +31,8 @@ class DownloadContext {
   static const char* entry_points[];
   void HandleMessage(const char* message);
   void HandleSyncMessage(const char* message);
-
+  std::string GetFullDestinationPath(const std::string destination);
+  const std::string GetFullDestinationPath(const std::string destination) const;
  private:
   void HandleStart(const picojson::value& msg);
   template <typename FnType>
@@ -63,6 +65,8 @@ class DownloadContext {
 
   ContextAPI* api_;
 
+  FilesystemContext FS_Context;
+
   struct DownloadItem {
     std::string uid;
     std::string url;
@@ -93,7 +97,6 @@ class DownloadContext {
 
   // FullDestPath = HomePath + DestPath
   // TODO(hdq): This depends on filesystem api?
-  const std::string GetFullDestinationPath(const std::string destination) const;
   const std::string GetActualFolder(const std::string& destination) const;
 
   bool GetDownloadID(const picojson::value& msg,

@@ -68,7 +68,10 @@ FilesystemContext::FilesystemContext(ContextAPI* api)
     : api_(api) {
   initialize();
 }
-
+FilesystemContext::FilesystemContext()
+    : api_(NULL) {
+  initialize();
+}
 void FilesystemContext::initialize() {
   AddInternalStorage("camera", kPathCamera);
   AddInternalStorage("music", kPathSounds);
