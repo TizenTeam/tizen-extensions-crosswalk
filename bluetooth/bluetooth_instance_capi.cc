@@ -96,9 +96,7 @@ void BluetoothInstance::OnStateChanged(int result,
   obj->adapter_enabled_ = (adapter_state == BT_ADAPTER_ENABLED) ? true : false;
 
   if (obj->get_default_adapter_) {
-    // FIXME(clecou) directly call 'GetDefaultAdapter' once NTB is integrated.
-    // After testing, 100 ms is necessary to really get a powered adapter.
-    g_timeout_add(100, obj->GetDefaultAdapter, obj);
+    obj->GetDefaultAdapter(obj);
     return;
   }
 
@@ -409,7 +407,7 @@ void BluetoothInstance::OnHdpDataReceived(unsigned int channel,
   obj->InternalPostMessage(picojson::value(o));
 }
 
-gboolean BluetoothInstance::GetDefaultAdapter(gpointer user_data) {
+void BluetoothInstance::GetDefaultAdapter(gpointer user_data) {
   BluetoothInstance* obj = static_cast<BluetoothInstance*>(user_data);
 
   picojson::value::object o;
@@ -417,13 +415,13 @@ gboolean BluetoothInstance::GetDefaultAdapter(gpointer user_data) {
   char* name = NULL;
   CAPI(bt_adapter_get_name(&name));
   if (!name)
-    return TRUE;
+    return;
   o["name"] = picojson::value(name);
 
   char* address = NULL;
   CAPI(bt_adapter_get_address(&address));
   if (!address)
-    return TRUE;
+    return;
   o["address"] = picojson::value(address);
 
   bool powered, visible = false;
@@ -452,8 +450,6 @@ gboolean BluetoothInstance::GetDefaultAdapter(gpointer user_data) {
   CAPI(bt_adapter_foreach_bonded_device(OnKnownBondedDevice, obj));
 
   obj->get_default_adapter_ = false;
-
-  return FALSE;
 }
 
 void BluetoothInstance::InitializeAdapter() {
@@ -497,24 +493,11 @@ void BluetoothInstance::HandleGetDefaultAdapter(const picojson::value& msg) {
   // called bt_adapter_enable(). So if adapter is turned OFF, we enable it.
   if (state == BT_ADAPTER_DISABLED) {
     CAPI(bt_adapter_enable());
-  } else {
-    adapter_enabled_ = true;
-  }
-
-#ifdef NTB
-  if (!adapter_enabled_) {
     return;
   }
 
+  adapter_enabled_ = true;
   GetDefaultAdapter(this);
-#else
-  if (adapter_enabled_) {
-    // Hackish way in order to activate org.projectx.bt dbus service
-    // and start bt-service daemon
-    char* name = NULL;
-    CAPI(bt_adapter_get_name(&name));
-  }
-#endif
 }
 
 void BluetoothInstance::HandleSetAdapterProperty(const picojson::value& msg) {
