@@ -6,7 +6,6 @@
 #define BLUETOOTH_BLUETOOTH_INSTANCE_CAPI_H_
 
 #include <bluetooth.h>
-#include <glib.h>
 
 #include <iostream>
 #include <map>
@@ -17,24 +16,6 @@
 #include "common/picojson.h"
 
 #define LOG_ERR(msg) std::cerr << "[Error] " << msg << std::endl
-
-// Macros interfacing with C code from Bluetooth API.
-#define CAPI(fnc)                                                              \
-  do {                                                                         \
-    int _er = (fnc);                                                           \
-    if (_er != BT_ERROR_NONE) {                                                \
-      LOG_ERR(#fnc " failed");                                                 \
-    }                                                                          \
-  } while (0)
-
-// same CAPI macro providing error code
-#define CAPI_ERR(fnc, _er)                                                     \
-  do {                                                                         \
-    _er = (fnc);                                                               \
-    if (_er != BT_ERROR_NONE) {                                                \
-      LOG_ERR(#fnc " failed");                                                 \
-    }                                                                          \
-  } while (0)
 
 namespace picojson {
 
@@ -51,9 +32,6 @@ class BluetoothInstance : public common::Instance {
   virtual void Initialize();
   virtual void HandleMessage(const char* msg);
   virtual void HandleSyncMessage(const char* msg);
-
-  void InitializeAdapter();
-  void UninitializeAdapter();
 
   void HandleDiscoverDevices(const picojson::value& msg);
   void HandleStopDiscovery(const picojson::value& msg);
@@ -72,11 +50,16 @@ class BluetoothInstance : public common::Instance {
   void HandleDisconnectSource(const picojson::value& msg);
   void HandleSendHealthData(const picojson::value& msg);
 
-  void InternalPostMessage(picojson::value v);
-  void InternalSetSyncReply(picojson::value v);
-  void FlushPendingMessages();
+  void PostError(std::string reply_id, int error);
+  void SendSyncError(int error);
+  void PostResult(const std::string& cmd, std::string reply_id, int error);
+  void PostResult(const std::string& cmd, std::string reply_id, int error,
+      picojson::value::object& o);
 
-  static gboolean GetDefaultAdapter(gpointer user_data);
+  void StoreReplyId(const picojson::value& msg);
+  void RemoveReplyId(const std::string& cmd);
+
+  static void GetDefaultAdapter(void* user_data);
 
   static void OnStateChanged(int result, bt_adapter_state_e adapter_state,
       void* user_data);
@@ -120,10 +103,6 @@ class BluetoothInstance : public common::Instance {
 
   std::map<int, bool> socket_connected_map_;
 
-  typedef std::vector<picojson::value> MessageQueue;
-  MessageQueue queue_;
-
-  bool is_js_context_initialized_;
   bool adapter_enabled_;
   bool get_default_adapter_;
   bool stop_discovery_from_js_;
