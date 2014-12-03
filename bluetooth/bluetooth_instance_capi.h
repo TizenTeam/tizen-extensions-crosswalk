@@ -50,12 +50,17 @@ class BluetoothInstance : public common::Instance {
   void HandleDisconnectSource(const picojson::value& msg);
   void HandleSendHealthData(const picojson::value& msg);
 
-  void PostError(std::string reply_id, int error);
+  void PostAsyncError(std::string reply_id, int error);
+  void PostAsyncReply(std::string cmd, int error);
+  void PostAsyncReply(std::string cmd, int error, picojson::value::object& o);
+  void PostCmdSend(std::string cmd, picojson::value::object& o);
+
   void SendSyncError(int error);
-  void PostResult(const std::string& cmd, std::string reply_id, int error);
-  void PostResult(const std::string& cmd, std::string reply_id, int error,
+  void PostResult(std::string cmd, std::string reply_id, int error);
+  void PostResult(std::string cmd, std::string reply_id, int error,
       picojson::value::object& o);
 
+  bool IsJsReplyId(const std::string& cmd);
   void StoreReplyId(const picojson::value& msg);
   void RemoveReplyId(const std::string& cmd);
 
@@ -103,9 +108,7 @@ class BluetoothInstance : public common::Instance {
 
   std::map<int, bool> socket_connected_map_;
 
-  bool adapter_enabled_;
   bool get_default_adapter_;
-  bool stop_discovery_from_js_;
 };
 
 #endif  // BLUETOOTH_BLUETOOTH_INSTANCE_CAPI_H_

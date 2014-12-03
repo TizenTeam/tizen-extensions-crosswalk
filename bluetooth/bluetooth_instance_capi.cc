@@ -14,13 +14,13 @@ inline const char* BoolToString(bool b) {
 
 }  // anonymous namespace
 
-// Macros interfacing with C code from Bluetooth API.
+// Macros calling bluetooth C API and handling error cases
 #define CAPI(fnc, msg)                                                         \
   do {                                                                         \
     int _er = (fnc);                                                           \
     if (_er != BT_ERROR_NONE) {                                                \
       LOG_ERR(#fnc " failed with error: " << _er);                             \
-      PostError(msg.get("reply_id").to_str(), _er);                            \
+      PostAsyncError(msg.get("reply_id").to_str(), _er);                       \
       return;                                                                  \
     }                                                                          \
     StoreReplyId(msg);                                                         \
@@ -38,8 +38,7 @@ inline const char* BoolToString(bool b) {
   } while (0)
 
 BluetoothInstance::BluetoothInstance()
-    : get_default_adapter_(false),
-      stop_discovery_from_js_(false) {
+    : get_default_adapter_(false) {
 }
 
 BluetoothInstance::~BluetoothInstance() {
@@ -145,9 +144,11 @@ void BluetoothInstance::OnStateChanged(int result,
   picojson::value::object o;
   o["Powered"] = picojson::value(
       BoolToString(adapter_state == BT_ADAPTER_ENABLED));
-  obj->PostResult("AdapterUpdated", obj->callbacks_id_map_["Powered"], result,
-      o);
-  obj->RemoveReplyId("Powered");
+
+  if (obj->IsJsReplyId("Powered"))
+    obj->PostAsyncReply("Powered", result, o);
+  else
+    obj->PostCmdSend("AdapterUpdated", o);
 }
 
 void BluetoothInstance::OnNameChanged(char* name, void* user_data) {
@@ -155,9 +156,11 @@ void BluetoothInstance::OnNameChanged(char* name, void* user_data) {
 
   picojson::value::object o;
   o["Name"] = picojson::value(name);
-  obj->PostResult("AdapterUpdated", obj->callbacks_id_map_["Name"],
-      BT_ERROR_NONE, o);
-  obj->RemoveReplyId("Name");
+
+  if (obj->IsJsReplyId("Name"))
+    obj->PostAsyncReply("Name", BT_ERROR_NONE, o);
+  else
+    obj->PostCmdSend("AdapterUpdated", o);
 }
 
 void BluetoothInstance::OnVisibilityChanged(int result,
@@ -170,9 +173,11 @@ void BluetoothInstance::OnVisibilityChanged(int result,
 
   picojson::value::object o;
   o["Discoverable"] = picojson::value(visible);
-  obj->PostResult("AdapterUpdated", obj->callbacks_id_map_["Discoverable"],
-      result, o);
-  obj->RemoveReplyId("Discoverable");
+
+  if (obj->IsJsReplyId("Discoverable"))
+    obj->PostAsyncReply("Discoverable", result, o);
+  else
+    obj->PostCmdSend("AdapterUpdated", o);
 }
 
 void BluetoothInstance::OnDiscoveryStateChanged(int result,
@@ -182,21 +187,18 @@ void BluetoothInstance::OnDiscoveryStateChanged(int result,
 
   switch (discovery_state) {
     case BT_ADAPTER_DEVICE_DISCOVERY_STARTED: {
-      obj->PostResult("", obj->callbacks_id_map_["DiscoverDevices"], result);
-      obj->RemoveReplyId("DiscoverDevices");
+      LOG_DBG("discovery started: " << discovery_state);
+      obj->PostAsyncReply("DiscoverDevices", result);
       break;
     }
     case BT_ADAPTER_DEVICE_DISCOVERY_FINISHED: {
-      if (obj->stop_discovery_from_js_) {
-        obj->PostResult("", obj->callbacks_id_map_["StopDiscovery"], result);
-        obj->RemoveReplyId("StopDiscovery");
+      LOG_DBG("discovery finished: " << discovery_state);
+      if (obj->IsJsReplyId("StopDiscovery")) {
+        obj->PostAsyncReply("StopDiscovery", result);
       } else {
         picojson::value::object o;
-        // discovery stop was not initiated by JS. It was done by a timeout...
-        o["cmd"] = picojson::value("DiscoveryFinished");
-        obj->PostResult("DiscoveryFinished", "", BT_ERROR_NONE);
+        obj->PostCmdSend("DiscoveryFinished", o);
       }
-      obj->stop_discovery_from_js_ = false;
       break;
     }
     case BT_ADAPTER_DEVICE_DISCOVERY_FOUND: {
@@ -243,13 +245,13 @@ void BluetoothInstance::OnDiscoveryStateChanged(int result,
 
       o["cmd"] = picojson::value("DeviceFound");
       o["found_on_discovery"] = picojson::value(true);
-      obj->PostResult("DeviceFound", "", BT_ERROR_NONE, o);
+      obj->PostCmdSend("DeviceFound", o);
       break;
     }
     case BT_ADAPTER_DEVICE_DISCOVERY_REMOVED: {
       picojson::value::object o;
       o["Address"] = picojson::value(discovery_info->remote_address);
-      obj->PostResult("DeviceRemoved", "", BT_ERROR_NONE, o);
+      obj->PostCmdSend("DeviceRemoved", o);
       break;
     }
     default:
@@ -288,7 +290,7 @@ bool BluetoothInstance::OnKnownBondedDevice(bt_device_info_s* device_info,
   o["Paired"] = picojson::value(BoolToString(device_info->is_bonded));
   o["Trusted"] = picojson::value(BoolToString(device_info->is_authorized));
   o["Connected"] = picojson::value(BoolToString(device_info->is_connected));
-  obj->PostResult("BondedDevice", "", BT_ERROR_NONE, o);
+  obj->PostCmdSend("BondedDevice", o);
   return true;
 }
 
@@ -301,8 +303,7 @@ void BluetoothInstance::OnBondCreated(int result, bt_device_info_s* device_info,
 
   picojson::value::object o;
   o["capi"] = picojson::value(true);
-  obj->PostResult("", obj->callbacks_id_map_["CreateBonding"], result, o);
-  obj->RemoveReplyId("CreateBonding");
+  obj->PostAsyncReply("CreateBonding", result, o);
 }
 
 void BluetoothInstance::OnBondDestroyed(int result, char* remote_address,
@@ -314,8 +315,7 @@ void BluetoothInstance::OnBondDestroyed(int result, char* remote_address,
 
   picojson::value::object o;
   o["capi"] = picojson::value(true);
-  obj->PostResult("", obj->callbacks_id_map_["DestroyBonding"], result, o);
-  obj->RemoveReplyId("DestroyBonding");
+  obj->PostAsyncReply("DestroyBonding", result, o);
 }
 
 void BluetoothInstance::OnSocketConnected(int result,
@@ -335,7 +335,7 @@ void BluetoothInstance::OnSocketConnected(int result,
         picojson::value(static_cast<double>(connection->socket_fd));
     o["peer"] = picojson::value(connection->remote_address);
     obj->socket_connected_map_[connection->socket_fd] = true;
-    obj->PostResult("RFCOMMSocketAccept", "", BT_ERROR_NONE, o);
+    obj->PostCmdSend("RFCOMMSocketAccept", o);
 
   } else if (connection_state == BT_SOCKET_CONNECTED &&
              connection->local_role == BT_SOCKET_CLIENT) {
@@ -345,17 +345,14 @@ void BluetoothInstance::OnSocketConnected(int result,
         picojson::value(static_cast<double>(connection->socket_fd));
     o["peer"] = picojson::value(connection->remote_address);
     obj->socket_connected_map_[connection->socket_fd] = true;
-    obj->PostResult("", obj->callbacks_id_map_["ConnectToService"], result, o);
-    obj->RemoveReplyId("ConnectToService");
+    obj->PostAsyncReply("ConnectToService", result, o);
 
   } else if (connection_state == BT_SOCKET_DISCONNECTED) {
     picojson::value::object o;
     o["socket_fd"] =
         picojson::value(static_cast<double>(connection->socket_fd));
     obj->socket_connected_map_[connection->socket_fd] = false;
-    obj->PostResult("", obj->callbacks_id_map_["RFCOMMsocketDestroy"], result,
-        o);
-    obj->RemoveReplyId("RFCOMMsocketDestroy");
+    obj->PostAsyncReply("RFCOMMsocketDestroy", result, o);
   } else {
     LOG_ERR("Unknown role!");
   }
@@ -371,7 +368,7 @@ void BluetoothInstance::OnSocketHasData(bt_socket_received_data_s* data,
   picojson::value::object o;
   o["socket_fd"] = picojson::value(static_cast<double>(data->socket_fd));
   o["data"] = picojson::value(static_cast<std::string>(data->data));
-  obj->PostResult("SocketHasData", "", BT_ERROR_NONE, o);
+  obj->PostCmdSend("SocketHasData", o);
 }
 
 void BluetoothInstance::OnHdpConnected(int result, const char* remote_address,
@@ -385,8 +382,7 @@ void BluetoothInstance::OnHdpConnected(int result, const char* remote_address,
   o["channel_type"] = picojson::value(static_cast<double>(type));
   o["channel"] = picojson::value(static_cast<double>(channel));
   o["connected"] = picojson::value("true");
-  obj->PostResult("", obj->callbacks_id_map_["ConnectToSource"], result, o);
-  obj->RemoveReplyId("ConnectToSource");
+  obj->PostAsyncReply("ConnectToSource", result, o);
 }
 
 void BluetoothInstance::OnHdpDisconnected(int result,
@@ -397,8 +393,7 @@ void BluetoothInstance::OnHdpDisconnected(int result,
   o["address"] = picojson::value(remote_address);
   o["channel"] = picojson::value(static_cast<double>(channel));
   o["connected"] = picojson::value("false");
-  obj->PostResult("", obj->callbacks_id_map_["DisconnectSource"], result, o);
-  obj->RemoveReplyId("DisconnectSource");
+  obj->PostAsyncReply("DisconnectSource", result, o);
 }
 
 void BluetoothInstance::OnHdpDataReceived(unsigned int channel,
@@ -409,9 +404,7 @@ void BluetoothInstance::OnHdpDataReceived(unsigned int channel,
   o["channel"] = picojson::value(static_cast<double>(channel));
   o["data"] = picojson::value(data);
   o["size"] = picojson::value(static_cast<double>(size));
-  obj->PostResult("", obj->callbacks_id_map_["SendHealthData"], BT_ERROR_NONE,
-      o);
-  obj->RemoveReplyId("SendHealthData");
+  obj->PostAsyncReply("SendHealthData", BT_ERROR_NONE, o);
 }
 
 void BluetoothInstance::GetDefaultAdapter(void* user_data) {
@@ -513,10 +506,9 @@ void BluetoothInstance::HandleStopDiscovery(const picojson::value& msg) {
   bool is_discovering = false;
   bt_adapter_is_discovering(&is_discovering);
   if (!is_discovering) {
-    PostResult("", msg.get("reply_id").to_str(), BT_ERROR_NONE);
+    PostAsyncReply(msg.get("cmd").to_str(), BT_ERROR_NONE);
     return;
   }
-  stop_discovery_from_js_ = true;
   CAPI(bt_adapter_stop_device_discovery(), msg);
 }
 
@@ -540,7 +532,7 @@ void BluetoothInstance::HandleRFCOMMListen(const picojson::value& msg) {
   picojson::value::object o;
   // give the listened socket to JS and store it in service_handler
   o["server_fd"] = picojson::value(static_cast<double>(socket_fd));
-  PostResult("", msg.get("reply_id").to_str(), BT_ERROR_NONE, o);
+  PostAsyncReply(msg.get("cmd").to_str(), BT_ERROR_NONE, o);
 }
 
 void BluetoothInstance::HandleConnectToService(const picojson::value& msg) {
@@ -568,7 +560,7 @@ void BluetoothInstance::HandleCloseSocket(const picojson::value& msg) {
   CAPI(bt_socket_disconnect_rfcomm(socket), msg);
   picojson::value::object o;
   o["capi"] = picojson::value(true);
-  PostResult("", msg.get("reply_id").to_str(), BT_ERROR_NONE, o);
+  PostAsyncReply(msg.get("cmd").to_str(), BT_ERROR_NONE, o);
 }
 
 void BluetoothInstance::HandleUnregisterServer(const picojson::value& msg) {
@@ -579,8 +571,7 @@ void BluetoothInstance::HandleUnregisterServer(const picojson::value& msg) {
   if (socket_connected_map_[socket] == false) {
     picojson::value::object o;
     o["socket_fd"] = picojson::value(static_cast<double>(socket));
-    PostResult("", msg.get("reply_id").to_str(), BT_ERROR_NONE, o);
-    RemoveReplyId(msg.get("cmd").to_str());
+    PostAsyncReply(msg.get("cmd").to_str(), BT_ERROR_NONE, o);
   }
 }
 
@@ -592,12 +583,12 @@ void BluetoothInstance::HandleRegisterSinkApp(const picojson::value& msg) {
   CAPI(bt_hdp_register_sink_app(data_type, &app_id), msg);
   picojson::value::object o;
   o["app_id"] = picojson::value(app_id);
-  PostResult("", msg.get("reply_id").to_str(), BT_ERROR_NONE, o);
+  PostAsyncReply(msg.get("cmd").to_str(), BT_ERROR_NONE, o);
 }
 
 void BluetoothInstance::HandleUnregisterSinkApp(const picojson::value& msg) {
   CAPI(bt_hdp_unregister_sink_app(msg.get("app_id").to_str().c_str()), msg);
-  PostResult("", msg.get("reply_id").to_str(), BT_ERROR_NONE);
+  PostAsyncReply(msg.get("cmd").to_str(), BT_ERROR_NONE);
 }
 
 void BluetoothInstance::HandleConnectToSource(const picojson::value& msg) {
@@ -618,17 +609,38 @@ void BluetoothInstance::HandleSendHealthData(const picojson::value& msg) {
        msg);
 }
 
+bool BluetoothInstance::IsJsReplyId(const std::string& cmd) {
+  return !callbacks_id_map_[cmd].empty();
+}
+
 void BluetoothInstance::StoreReplyId(const picojson::value& msg) {
   callbacks_id_map_[msg.get("cmd").to_str()] = msg.get("reply_id").to_str();
 }
 
 void BluetoothInstance::RemoveReplyId(const std::string& cmd) {
-  if (!callbacks_id_map_[cmd].empty())
+  if (IsJsReplyId(cmd)) {
+    LOG_DBG( cmd << " -> " << callbacks_id_map_[cmd]);
     callbacks_id_map_.erase(cmd);
 }
 
-void BluetoothInstance::PostError(std::string reply_id, int error) {
+void BluetoothInstance::PostAsyncError(std::string reply_id, int error) {
   PostResult("", reply_id, error);
+}
+
+void BluetoothInstance::PostAsyncReply(std::string cmd, int error) {
+  PostResult("", callbacks_id_map_[cmd], error);
+  RemoveReplyId(cmd);
+}
+
+void BluetoothInstance::PostAsyncReply(std::string cmd,
+                                       int error,
+                                       picojson::value::object& o) {
+  PostResult("", callbacks_id_map_[cmd], error, o);
+  RemoveReplyId(cmd);
+}
+
+void BluetoothInstance::PostCmdSend(std::string cmd, picojson::value::object& o) {
+  PostResult(cmd, "", BT_ERROR_NONE, o);
 }
 
 void BluetoothInstance::SendSyncError(int error) {
@@ -638,7 +650,7 @@ void BluetoothInstance::SendSyncError(int error) {
   SendSyncReply(v.serialize().c_str());
 }
 
-void BluetoothInstance::PostResult(const std::string& cmd,
+void BluetoothInstance::PostResult(std::string cmd,
                                    std::string reply_id,
                                    int error) {
   picojson::value::object o;
@@ -649,7 +661,7 @@ void BluetoothInstance::PostResult(const std::string& cmd,
   PostMessage(v.serialize().c_str());
 }
 
-void BluetoothInstance::PostResult(const std::string& cmd,
+void BluetoothInstance::PostResult(std::string cmd,
                                    std::string reply_id,
                                    int error,
                                    picojson::value::object& o) {
