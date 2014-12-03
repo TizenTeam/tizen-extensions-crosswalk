@@ -15,6 +15,9 @@
 #include "common/extension.h"
 #include "common/picojson.h"
 
+#define LOG_DBG(msg) \
+    std::cout << "[DBG] " << __FUNCTION__ << ":" << __LINE__ << " -- " \
+    << msg << std::endl
 #define LOG_ERR(msg) std::cerr << "[Error] " << msg << std::endl
 
 namespace picojson {
