@@ -462,7 +462,8 @@ void BluetoothInstance::HandleGetDefaultAdapter(const picojson::value& msg) {
 }
 
 void BluetoothInstance::HandleSetAdapterProperty(const picojson::value& msg) {
-  if (msg.get("property").to_str() == "Powered") {
+  std::string property = msg.get("property").to_str();
+  if (property == "Powered") {
     if (msg.get("value").get<bool>())
       CAPI(bt_adapter_enable(), msg);
     else
@@ -470,12 +471,12 @@ void BluetoothInstance::HandleSetAdapterProperty(const picojson::value& msg) {
     goto done;
   }
 
-  if (msg.get("property").to_str() == "Name") {
+  if (property == "Name") {
     CAPI(bt_adapter_set_name(msg.get("value").to_str().c_str()), msg);
     goto done;
   }
 
-  if (msg.get("property").to_str() == "Discoverable") {
+  if (property == "Discoverable") {
     bool visible = msg.get("value").get<bool>();
     int timeout = static_cast<int>(msg.get("timeout").get<double>());
 
@@ -493,8 +494,7 @@ void BluetoothInstance::HandleSetAdapterProperty(const picojson::value& msg) {
 done:
   // All adapter properties use the same json cmd, so in this case we pair the
   // property name with the reply_id.
-  callbacks_id_map_[msg.get("property").to_str()] =
-      callbacks_id_map_[msg.get("cmd").to_str()];
+  callbacks_id_map_[property] = callbacks_id_map_[msg.get("cmd").to_str()];
   RemoveReplyId(msg.get("cmd").to_str());
 }
 
