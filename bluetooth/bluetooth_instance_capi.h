@@ -50,15 +50,18 @@ class BluetoothInstance : public common::Instance {
   void HandleDisconnectSource(const picojson::value& msg);
   void HandleSendHealthData(const picojson::value& msg);
 
-  void PostAsyncError(std::string reply_id, int error);
-  void PostAsyncReply(std::string cmd, int error);
-  void PostAsyncReply(std::string cmd, int error, picojson::value::object& o);
-  void PostCmdSend(std::string cmd, picojson::value::object& o);
-
-  void SendSyncError(int error);
-  void PostResult(std::string cmd, std::string reply_id, int error);
-  void PostResult(std::string cmd, std::string reply_id, int error,
+  void PostAsyncError(const std::string& reply_id, const int& error);
+  void PostAsyncReply(const std::string& cmd, const int& error);
+  void PostAsyncReply(const std::string& cmd, const int& error,
       picojson::value::object& o);
+
+  void SendCmdToJs(std::string cmd, picojson::value::object& o);
+
+  void SendSyncError(const int& error);
+  void PostResult(const std::string& cmd, const std::string& reply_id,
+      const int& error);
+  void PostResult(const std::string& cmd, const std::string& reply_id,
+      const int& error, picojson::value::object& o);
 
   bool IsJsReplyId(const std::string& cmd);
   void StoreReplyId(const picojson::value& msg);
