@@ -390,27 +390,9 @@ var deviceService = {
 Object.defineProperties(exports.deviceService, deviceService);
 _addConstProperty(exports, 'deviceService', exports.deviceService);
 
-// CAPI error codes were taken from capi-network-bluetooth componenent.
-var CapiError = {
-  'BT_ERROR_NONE': 0,
-  'BT_ERROR_CANCELLED': -125, /* -ECANCELED */
-  'BT_ERROR_INVALID_PARAMETER': -22,/* -EINVAL*/
-  'BT_ERROR_OUT_OF_MEMORY': -12,/* -ENOMEM */
-  'BT_ERROR_RESOURCE_BUSY': -16,/* -EBUSY */
-  // 'BT_ERROR_TIMED_OUT' = no error number set, /**< Timeout error */
-  'BT_ERROR_NOW_IN_PROGRESS': -115,/* -EINPROGRESS */
-  'BT_ERROR_NOT_INITIALIZED': -0x00008000 | 0x0101,
-  'BT_ERROR_NOT_ENABLED': -0x00008000 | 0x0102,
-  'BT_ERROR_ALREADY_DONE': -0x00008000 | 0x0103,
-  'BT_ERROR_OPERATION_FAILED': -0x00008000 | 0x0104,
-  'BT_ERROR_NOT_IN_PROGRESS': -0x00008000 | 0x0105,
-  'BT_ERROR_REMOTE_DEVICE_NOT_BONDED' : -0x00008000 | 0x0106,
-  'BT_ERROR_AUTH_REJECTED': -0x00008000 | 0x0107,
-  'BT_ERROR_AUTH_FAILED': -0x00008000 | 0x0108,
-  'BT_ERROR_REMOTE_DEVICE_NOT_FOUND': -0x00008000 | 0x0109,
-  'BT_ERROR_SERVICE_SEARCH_FAILED': -0x00008000 | 0x010A,
-  'BT_ERROR_REMOTE_DEVICE_NOT_CONNECTED': -0x00008000 | 0x010B
-};
+// This is the only error code useful at the Javascript API level.
+// This value was retrieved from Tizen CAPI.and corresponds to -EINVAL.
+var BT_ERROR_INVALID_PARAMETER= -22;
 
 var defaultAdapter = new BluetoothAdapter();
 
@@ -469,7 +451,7 @@ BluetoothAdapter.prototype.setName = function(name, successCallback, errorCallba
     if (result.error != 0) {
       if (errorCallback) {
         var error = new tizen.WebAPIError(tizen.WebAPIException.UNKNOWN_ERR);
-        if (result.error == 1 || result.error == CapiError.BT_ERROR_INVALID_PARAMETER)
+        if (result.error == 1 || result.error == BT_ERROR_INVALID_PARAMETER)
           error = new tizen.WebAPIError(tizen.WebAPIException.INVALID_VALUES_ERR);
         errorCallback(error);
       }
@@ -540,7 +522,7 @@ BluetoothAdapter.prototype.setVisible = function(mode, successCallback, errorCal
     if (result.error != 0) {
       if (errorCallback) {
         var error = new tizen.WebAPIError(tizen.WebAPIException.UNKNOWN_ERR);
-        if (result.error == 1 || result.error == CapiError.BT_ERROR_INVALID_PARAMETER)
+        if (result.error == 1 || result.error == BT_ERROR_INVALID_PARAMETER)
           error = new tizen.WebAPIError(tizen.WebAPIException.INVALID_VALUES_ERR);
         errorCallback(error);
       }
@@ -786,7 +768,7 @@ BluetoothAdapter.prototype.registerRFCOMMServiceByUUID =
     if (result.error != 0) {
       if (errorCallback) {
         var error = new tizen.WebAPIError(tizen.WebAPIException.UNKNOWN_ERR);
-        if (result.error == 1 || result.error == CapiError.BT_ERROR_INVALID_PARAMETER)
+        if (result.error == 1 || result.error == BT_ERROR_INVALID_PARAMETER)
           error = new tizen.WebAPIError(tizen.WebAPIException.INVALID_VALUES_ERR);
         errorCallback(error);
       }
@@ -935,7 +917,7 @@ BluetoothDevice.prototype.connectToServiceByUUID =
     if (result.error != 0) {
       if (errorCallback) {
         var error = new tizen.WebAPIError(tizen.WebAPIException.UNKNOWN_ERR);
-        if (result.error == 1 || result.error == CapiError.BT_ERROR_INVALID_PARAMETER)
+        if (result.error == 1 || result.error == BT_ERROR_INVALID_PARAMETER)
           error = new tizen.WebAPIError(tizen.WebAPIException.INVALID_VALUES_ERR);
         errorCallback(error);
       }
@@ -1200,7 +1182,7 @@ BluetoothHealthProfileHandler.prototype.connectToSource =
     if (result.error != 0) {
       if (errorCallback) {
         var error = new tizen.WebAPIError(tizen.WebAPIException.UNKNOWN_ERR);
-        if (result.error == 1 || result.error == CapiError.BT_ERROR_INVALID_PARAMETER)
+        if (result.error == 1 || result.error == BT_ERROR_INVALID_PARAMETER)
           error = new tizen.WebAPIError(tizen.WebAPIException.INVALID_VALUES_ERR);
         errorCallback(error);
       }
