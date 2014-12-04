@@ -48,22 +48,39 @@ inline const char* BoolToString(bool b) {
   } while (0)
 
 // same CAPI macro for sync messages
-#define CAPI_SYNC(fnc, instance)                                               \
+#define CAPI_SYNC(fnc, inst)                                               \
   do {                                                                         \
     int _er = (fnc);                                                           \
     if (_er != BT_ERROR_NONE) {                                                \
       LOG_ERR(#fnc " failed with error: " << _er);                             \
-      instance->SendSyncError(_er);                                            \
+      inst->SendSyncError(_er);                                            \
       return;                                                                  \
     }                                                                          \
   } while (0)
 
-BluetoothInstance::BluetoothInstance()
-    : get_default_adapter_(false) {
+BluetoothInstance::BluetoothInstance() : get_default_adapter_(false) {}
+
+void BluetoothInstance::Initialize() {
+  LOG_DBG("");
+  // Initialize bluetooth CAPIs and register all needed callbacks.
+  // By this way, bluetooth Web API will be updated according to BlueZ changes.
+  bt_initialize();
+  bt_adapter_set_state_changed_cb(OnStateChanged, this);
+  bt_adapter_set_name_changed_cb(OnNameChanged, this);
+  bt_adapter_set_visibility_mode_changed_cb(OnVisibilityChanged, this);
+  bt_adapter_set_device_discovery_state_changed_cb(OnDiscoveryStateChanged,
+      this);
+  bt_device_set_bond_created_cb(OnBondCreated, this);
+  bt_device_set_bond_destroyed_cb(OnBondDestroyed, this);
+  bt_socket_set_connection_state_changed_cb(OnSocketConnected, this);
+  bt_socket_set_data_received_cb(OnSocketHasData, this);
+  bt_hdp_set_connection_state_changed_cb(OnHdpConnected, OnHdpDisconnected,
+      this);
+  bt_hdp_set_data_received_cb(OnHdpDataReceived, this);
 }
 
 BluetoothInstance::~BluetoothInstance() {
-  // unregister CAPI bluetooth callbacks and deinitialize
+  LOG_DBG("");
   bt_adapter_unset_state_changed_cb();
   bt_adapter_unset_name_changed_cb();
   bt_adapter_unset_visibility_mode_changed_cb();
@@ -75,24 +92,6 @@ BluetoothInstance::~BluetoothInstance() {
   bt_hdp_unset_connection_state_changed_cb();
   bt_hdp_unset_data_received_cb();
   bt_deinitialize();
-}
-
-void BluetoothInstance::Initialize() {
-  // Initialize bluetooth CAPI and register all needed callbacks
-  bt_initialize();
-  bt_adapter_set_state_changed_cb(OnStateChanged, this);
-  bt_adapter_set_name_changed_cb(OnNameChanged, this);
-  bt_adapter_set_visibility_mode_changed_cb(OnVisibilityChanged, this);
-  bt_adapter_set_device_discovery_state_changed_cb(OnDiscoveryStateChanged,
-                                                   this);
-  bt_device_set_bond_created_cb(OnBondCreated, this);
-  bt_device_set_bond_destroyed_cb(OnBondDestroyed, this);
-  bt_socket_set_connection_state_changed_cb(OnSocketConnected, this);
-  bt_socket_set_data_received_cb(OnSocketHasData, this);
-  bt_hdp_set_connection_state_changed_cb(OnHdpConnected,
-                                         OnHdpDisconnected,
-                                         this);
-  bt_hdp_set_data_received_cb(OnHdpDataReceived, this);
 }
 
 void BluetoothInstance::HandleMessage(const char* message) {
@@ -513,8 +512,8 @@ void BluetoothInstance::HandleSetAdapterProperty(const picojson::value& msg) {
   }
 
 done:
-  // All adapter properties use the same json cmd, so in this case we pair the
-  // property name with the reply_id.
+  // All adapter properties use the same json cmd, so in this case the js
+  // reply_id is paired with the adapter property name.
   callbacks_id_map_[property] = callbacks_id_map_[kSetAdapterProperty];
   RemoveReplyId(kSetAdapterProperty);
 }
@@ -586,7 +585,7 @@ void BluetoothInstance::HandleUnregisterServer(const picojson::value& msg) {
   int socket = static_cast<int>(msg.get("server_fd").get<double>());
   CAPI(bt_socket_destroy_rfcomm(socket), msg);
   // if socket is not connected, OnSocketConnected() cb won't be triggered.
-  // So in that case, directly send a success post message to JavaScript.
+  // In that case, we directly send a success post message to JavaScript.
   if (socket_connected_map_[socket] == false) {
     picojson::value::object o;
     o["socket_fd"] = picojson::value(static_cast<double>(socket));
