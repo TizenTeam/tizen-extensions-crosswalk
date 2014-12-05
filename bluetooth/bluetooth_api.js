@@ -392,7 +392,7 @@ _addConstProperty(exports, 'deviceService', exports.deviceService);
 
 // This is the only CAPI error code useful at the Javascript API level.
 // This value was retrieved from Tizen CAPI and corresponds to -EINVAL.
-var BT_ERROR_INVALID_PARAMETER= -22;
+var BT_ERROR_INVALID_PARAMETER = -22;
 
 var defaultAdapter = new BluetoothAdapter();
 
@@ -409,9 +409,9 @@ exports.getDefaultAdapter = function() {
       _addConstProperty(defaultAdapter, 'powered', result.powered);
       _addConstProperty(defaultAdapter, 'visible', result.visible);
 
-      if (result.hasOwnProperty('address') && result.address != '') {
+      if (result.hasOwnProperty('address') && result.address != '')
         adapter.isReady = true;
-      }
+
     } else {
       adapter.isReady = false;
       throw new tizen.WebAPIException(tizen.WebAPIException.UNKNOWN_ERR);

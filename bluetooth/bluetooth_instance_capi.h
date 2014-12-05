@@ -79,16 +79,16 @@ class BluetoothInstance : public common::Instance {
       unsigned int size, void* user_data);
 
   // Methods to send JSON messages to Javascript
-  void PostAsyncError(const std::string& reply_id, const int& error);
-  void PostAsyncReply(const std::string& cmd, const int& error);
-  void PostAsyncReply(const std::string& cmd, const int& error,
+  void PostAsyncError(const std::string& reply_id, int error);
+  void PostAsyncReply(const std::string& cmd, int error);
+  void PostAsyncReply(const std::string& cmd, int error,
       picojson::value::object& o);
   void SendCmdToJs(std::string cmd, picojson::value::object& o);
-  void SendSyncError(const int& error);
+  void SendSyncError(int error);
   void PostResult(const std::string& cmd, const std::string& reply_id,
-      const int& error);
+      int error);
   void PostResult(const std::string& cmd, const std::string& reply_id,
-      const int& error, picojson::value::object& o);
+      int error, picojson::value::object& o);
 
   // Methods to handle javascript reply ids in order to use them for async calls
   bool IsJsReplyId(const std::string& cmd);
