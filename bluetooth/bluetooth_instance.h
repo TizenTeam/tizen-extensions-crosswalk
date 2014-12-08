@@ -12,6 +12,7 @@
 
 #include "common/extension.h"
 #include "common/picojson.h"
+#include "tizen/tizen.h"
 
 #define G_CALLBACK_1(METHOD, SENDER, ARG0)                                     \
   static void METHOD ## Thunk(SENDER sender, ARG0 res, gpointer userdata) {    \

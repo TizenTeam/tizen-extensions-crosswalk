@@ -14,6 +14,7 @@
 
 #include "common/extension.h"
 #include "common/picojson.h"
+#include "tizen/tizen.h"
 
 #define LOG_ERR(msg) std::cerr << "[Error] " << msg << std::endl
 

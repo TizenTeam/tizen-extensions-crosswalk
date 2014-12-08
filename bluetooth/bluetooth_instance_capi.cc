@@ -42,6 +42,12 @@ inline const char* BoolToString(bool b) {
   return b ? "true" : "false";
 }
 
+int CapiErrorToJs(int err) {
+  return (err == BT_ERROR_NONE              ? NO_ERROR :
+          err == BT_ERROR_INVALID_PARAMETER ? INVALID_VALUES_ERR :
+                                              UNKNOWN_ERR);
+}
+
 }  // anonymous namespace
 
 // Macros calling bluetooth C API and handling error cases
@@ -57,12 +63,12 @@ inline const char* BoolToString(bool b) {
   } while (0)
 
 // same CAPI macro for sync messages
-#define CAPI_SYNC(fnc, inst)                                               \
+#define CAPI_SYNC(fnc, inst)                                                   \
   do {                                                                         \
     int _er = (fnc);                                                           \
     if (_er != BT_ERROR_NONE) {                                                \
       LOG_ERR(#fnc " failed with error: " << _er);                             \
-      inst->SendSyncError(_er);                                            \
+      inst->SendSyncError(_er);                                                \
       return;                                                                  \
     }                                                                          \
   } while (0)
@@ -664,7 +670,7 @@ void BluetoothInstance::SendCmdToJs(std::string cmd,
 
 void BluetoothInstance::SendSyncError(int error) {
   picojson::value::object o;
-  o["error"] = picojson::value(static_cast<double>(error));
+  o["error"] = picojson::value(static_cast<double>(CapiErrorToJs(error)));
   picojson::value v(o);
   SendSyncReply(v.serialize().c_str());
 }
@@ -674,7 +680,7 @@ void BluetoothInstance::PostResult(const std::string& cmd,
   picojson::value::object o;
   o["cmd"] = picojson::value(cmd);
   o["reply_id"] = picojson::value(reply_id);
-  o["error"] = picojson::value(static_cast<double>(error));
+  o["error"] = picojson::value(static_cast<double>(CapiErrorToJs(error)));
   picojson::value v(o);
   PostMessage(v.serialize().c_str());
 }
@@ -683,7 +689,7 @@ void BluetoothInstance::PostResult(const std::string& cmd,
     const std::string& reply_id, int error, picojson::value::object& o) {
   o["cmd"] = picojson::value(cmd);
   o["reply_id"] = picojson::value(reply_id);
-  o["error"] = picojson::value(static_cast<double>(error));
+  o["error"] = picojson::value(static_cast<double>(CapiErrorToJs(error)));
   picojson::value v(o);
   PostMessage(v.serialize().c_str());
 }
