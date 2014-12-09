@@ -73,6 +73,17 @@ int CapiErrorToJs(int err) {
     }                                                                          \
   } while (0)
 
+// same CAPI macro for sync messages but returning FALSE
+#define CAPI_SYNC2(fnc, inst)                                                  \
+  do {                                                                         \
+    int _er = (fnc);                                                           \
+    if (_er != BT_ERROR_NONE) {                                                \
+      LOG_ERR(#fnc " failed with error: " << _er);                             \
+      inst->SendSyncError(_er);                                                \
+      return FALSE;                                                            \
+    }                                                                          \
+  } while (0)
+
 BluetoothInstance::BluetoothInstance() : get_default_adapter_(false) {}
 
 void BluetoothInstance::Initialize() {
@@ -170,7 +181,9 @@ void BluetoothInstance::OnStateChanged(int result,
   BluetoothInstance* obj = static_cast<BluetoothInstance*>(user_data);
 
   if (obj->get_default_adapter_) {
-    obj->GetDefaultAdapter(obj);
+    // FIXME(clecou) directly call 'GetDefaultAdapter' once NTB is integrated.
+    // After testing, 100 ms is necessary to really get a powered adapter.
+    g_timeout_add(100, obj->GetDefaultAdapter, obj);
     return;
   }
 
@@ -436,17 +449,17 @@ void BluetoothInstance::OnHdpDataReceived(unsigned int channel,
   obj->PostAsyncReply(kSendHealthData, kNoError, o);
 }
 
-void BluetoothInstance::GetDefaultAdapter(void* user_data) {
+gboolean BluetoothInstance::GetDefaultAdapter(gpointer user_data) {
   BluetoothInstance* obj = static_cast<BluetoothInstance*>(user_data);
 
   char* name = NULL;
-  CAPI_SYNC(bt_adapter_get_name(&name), obj);
+  CAPI_SYNC2(bt_adapter_get_name(&name), obj);
 
   char* address = NULL;
-  CAPI_SYNC(bt_adapter_get_address(&address), obj);
+  CAPI_SYNC2(bt_adapter_get_address(&address), obj);
 
   bt_adapter_state_e state = BT_ADAPTER_DISABLED;
-  CAPI_SYNC(bt_adapter_get_state(&state), obj);
+  CAPI_SYNC2(bt_adapter_get_state(&state), obj);
 
   bool powered = false;
   bool visible = false;
@@ -456,7 +469,7 @@ void BluetoothInstance::GetDefaultAdapter(void* user_data) {
     bt_adapter_visibility_mode_e mode =
         BT_ADAPTER_VISIBILITY_MODE_NON_DISCOVERABLE;
 
-    CAPI_SYNC(bt_adapter_get_visibility(&mode, NULL), obj);
+    CAPI_SYNC2(bt_adapter_get_visibility(&mode, NULL), obj);
     visible = (mode > 0) ? true : false;
   }
 
@@ -473,6 +486,8 @@ void BluetoothInstance::GetDefaultAdapter(void* user_data) {
   bt_adapter_foreach_bonded_device(OnKnownBondedDevice, obj);
 
   obj->get_default_adapter_ = false;
+
+  return FALSE;
 }
 
 void BluetoothInstance::HandleGetDefaultAdapter(const picojson::value& msg) {

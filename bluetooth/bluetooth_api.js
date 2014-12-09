@@ -714,6 +714,10 @@ BluetoothAdapter.prototype.registerRFCOMMServiceByUUID =
   if (adapter.checkServiceAvailability(errorCallback))
     return;
 
+  // Not implemented
+  throw new tizen.WebAPIException(tizen.WebAPIException.UNKNOWN_ERR);
+  return;
+
   var msg = {
     'cmd': 'RFCOMMListen',
     'uuid': uuid,

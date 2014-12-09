@@ -6,6 +6,7 @@
 #define BLUETOOTH_BLUETOOTH_INSTANCE_CAPI_H_
 
 #include <bluetooth.h>
+#include <glib.h>
 
 #include <iostream>
 #include <map>
@@ -35,7 +36,7 @@ class BluetoothInstance : public common::Instance {
   virtual void HandleSyncMessage(const char* msg);
 
   void HandleGetDefaultAdapter(const picojson::value& msg);
-  void GetDefaultAdapter(void* user_data);
+  static gboolean GetDefaultAdapter(gpointer user_data);
   void HandleSetAdapterProperty(const picojson::value& msg);
   void HandleDiscoverDevices(const picojson::value& msg);
   void HandleStopDiscovery(const picojson::value& msg);
