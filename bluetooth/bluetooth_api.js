@@ -984,9 +984,10 @@ BluetoothSocket.prototype.close = function() {
 
 function BluetoothClass() {}
 BluetoothClass.prototype.hasService = function(service) {
-  for (var i = 0; i < this.services.length; i++)
+  for (var i = 0; i < this.services.length; i++) {
     if (this.services[i] === service)
       return true;
+  }
 
   return false;
 };
