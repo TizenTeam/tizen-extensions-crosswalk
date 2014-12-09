@@ -550,7 +550,7 @@ void BluetoothInstance::HandleStopDiscovery(const picojson::value& msg) {
   bool is_discovering = false;
   bt_adapter_is_discovering(&is_discovering);
   if (!is_discovering) {
-    PostAsyncReply(kStopDiscovery, kNoError);
+    PostResult(kEmptyStr, msg.get("reply_id").to_str(), kNoError);
     return;
   }
   CAPI(bt_adapter_stop_device_discovery(), msg);
